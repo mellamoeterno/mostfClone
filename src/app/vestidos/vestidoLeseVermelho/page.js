@@ -13,7 +13,7 @@ const conjuntos = [
     src: "/images/roupas/emilyEmParis(emBreve).png",
     title: "Emily Em Paris",
     desc: "(Em Breve)",
-    price: 199,
+    price: 1,
   },
 ];
 
