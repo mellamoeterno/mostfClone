@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useCart } from "@/app/contexts/CartContext";
 import MiniCart from "@/app/components/miniCart"; 
 
-// Produtos relacionados (inline)
+// Produtos relacionados NOT PRODUCT FROM THE PAGE, BUT FOR THE BOTTOM 'RELATED PRODUCTS' (inline)
 const conjuntos = [
   {
     id: "emily-0002",
@@ -59,7 +59,7 @@ export default function ProductPage() {
     addToCart({
       id: `jaqueta-${selectedSize}`,
       name: `Jaqueta couro pu - Tamanho ${selectedSize}`,
-      price: 189,
+      price: 1,
       size: selectedSize,
       quantity: 1,
       image: images[0],
@@ -98,7 +98,7 @@ export default function ProductPage() {
           <div className="w-full md:w-1/2 flex flex-col justify-between">
             <div>
               <h1 className="text-3xl font-bold mb-4 text-[#133010]">Jaqueta couro pu</h1>
-              <p className="text-gray-700 mb-6">R$ 189,00</p>
+              <p className="text-gray-700 mb-6">R$ 1,00 TESTE</p>
 
               <div className="mb-6">
                 <h2 className="text-[#133010] text-lg font-semibold mb-2">Tamanho</h2>
