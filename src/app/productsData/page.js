@@ -1,4 +1,4 @@
-'use client'
+/* 'use client'
 const conjuntos = [
     {
       id: "emily0002",
@@ -110,4 +110,4 @@ const conjuntos = [
       desc: "calça comfy +",
       price: 199,
     }
-  ];
+  ]; */
