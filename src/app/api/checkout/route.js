@@ -20,7 +20,7 @@ export async function POST(req) {
         number: body.numero,
         complement: body.complemento,
       },
-      items: body.cart.map((item) => ({
+      items: body.items.map((item) => ({
         quantity: Number(item.quantity) || 1,
         // ✅ Convert R$ → centavos safely
         price: Math.round(parseFloat(item.price) * 100),
