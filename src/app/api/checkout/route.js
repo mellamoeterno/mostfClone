@@ -1,63 +1,73 @@
-// ✅ InfinitePay - Link Integrado Checkout API (fixed)
 import { NextResponse } from "next/server";
-import crypto from "crypto"; // needed for order_nsu (UUID)
 
 export async function POST(req) {
   try {
-    const body = await req.json();
-
-    // 🔒 Required environment variables
+    const { items } = await req.json();
     const handle = process.env.INFINITEPAY_HANDLE;
-    const redirect_url =
-      process.env.NEXT_PUBLIC_SUCCESS_URL ||
-      "https://mostf-clone.vercel.app/obrigadoPelaCompra";
 
     if (!handle) {
       throw new Error("Missing INFINITEPAY_HANDLE in environment variables");
     }
 
-    // 🧾 Generate unique order ID
-    const order_nsu = crypto.randomUUID();
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return NextResponse.json({ error: "Carrinho vazio ou inválido." }, { status: 400 });
+    }
 
-    // 🛒 Build items (price in cents, plain integers)
-    const itemsArray = body.items.map((item) => ({
-      name: item.description || item.name || "Produto",
-      price: Math.round(Number(item.price)), // e.g. 18900 = R$189,00
+    // 🧾 Format items for InfinitePay
+    const products = items.map((item) => ({
+      description: item.description || item.name || "Produto sem nome",
       quantity: item.quantity || 1,
+      // Convert R$ to centavos only once
+      price: Math.round(Number(item.price)),
     }));
 
-    // ⚠️ DO NOT ENCODE HERE — URLSearchParams will do it automatically
-    const itemsString = JSON.stringify(itemsArray);
+    // ✅ Calculate total
+    const totalAmount = products.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
 
-    // 👤 Optional customer data
-    const customer = body.customer || {};
+    // 🪙 InfinitePay requires price in centavos (integer)
+    if (isNaN(totalAmount) || totalAmount <= 0) {
+      return NextResponse.json(
+        { error: "Valor total inválido para checkout." },
+        { status: 400 }
+      );
+    }
 
-    // ✅ Build query params — URLSearchParams handles encoding once
-    const queryParams = new URLSearchParams({
-      items: itemsString,
-      order_nsu,
-      redirect_url,
+    // ✅ Build checkout URL
+    const checkoutResponse = await fetch(`https://api.infinitepay.io/api/v2/checkout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Handle": handle,
+      },
+      body: JSON.stringify({
+        amount: totalAmount,
+        currency: "BRL",
+        items: products,
+        // Optionally add redirect URLs
+        success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/success`,
+        cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/cancel`,
+      }),
     });
 
-    if (customer.name) queryParams.append("customer_name", customer.name);
-    if (customer.email) queryParams.append("customer_email", customer.email);
-    if (customer.phone) queryParams.append("customer_cellphone", customer.phone);
-    if (customer.cep) queryParams.append("address_cep", customer.cep);
-    if (customer.number) queryParams.append("address_number", customer.number);
-    if (customer.complement)
-      queryParams.append("address_complement", customer.complement);
+    const data = await checkoutResponse.json();
 
-    // 🧠 Construct final InfinitePay link
-    const checkoutUrl = `https://checkout.infinitepay.io/${handle}?${queryParams.toString()}`;
+    if (!checkoutResponse.ok) {
+      console.error("InfinitePay API error:", data);
+      return NextResponse.json(
+        { error: data.message || "Erro ao criar checkout no InfinitePay." },
+        { status: 400 }
+      );
+    }
 
-    console.log("✅ InfinitePay checkout URL:", checkoutUrl);
-
-    // ✅ Return link to frontend
-    return NextResponse.json({ url: checkoutUrl });
-  } catch (err) {
-    console.error("InfinitePay checkout error:", err);
+    // ✅ Return payment link to frontend
+    return NextResponse.json({ url: data.url });
+  } catch (error) {
+    console.error("InfinitePay checkout error:", error);
     return NextResponse.json(
-      { error: err.message || "Erro ao gerar o link de checkout" },
+      { error: "Erro interno no servidor durante o checkout." },
       { status: 500 }
     );
   }
