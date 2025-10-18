@@ -2,90 +2,51 @@ import { NextResponse } from "next/server";
 
 export async function POST(req) {
   try {
-    const { items } = await req.json();
-    const handle = process.env.INFINITEPAY_HANDLE;
+    const body = await req.json();
 
-    if (!handle) {
-      throw new Error("Missing INFINITEPAY_HANDLE in environment variables");
+    if (!body.items || !Array.isArray(body.items) || body.items.length === 0) {
+      return NextResponse.json(
+        { error: "Nenhum item no pedido." },
+        { status: 400 }
+      );
     }
 
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({ error: "Carrinho vazio ou inválido." }, { status: 400 });
-    }
-
-    // 🧾 Format items for InfinitePay
-    const products = items.map((item) => ({
-      description: item.description || item.name || "Produto sem nome",
+    // 🔹 Format items correctly for InfinitePay checkout
+    const formattedItems = body.items.map(item => ({
+      name: item.description || item.name || "Produto sem nome",
+      price: Math.round(Number(item.price)), // Ensure in centavos (e.g. 18900)
       quantity: item.quantity || 1,
-      // Convert R$ to centavos only once
-      price: Math.round(Number(item.price)),
     }));
 
-    // ✅ Calculate total
-    const totalAmount = products.reduce(
+    // 🔹 Basic total validation (optional)
+    const totalAmount = formattedItems.reduce(
       (sum, item) => sum + item.price * item.quantity,
       0
     );
-
-    // 🪙 InfinitePay requires price in centavos (integer)
-    if (isNaN(totalAmount) || totalAmount <= 0) {
+    if (isNaN(totalAmount) || totalAmount < 100) {
+      // InfinitePay minimum is R$1.00 (100 centavos)
       return NextResponse.json(
-        { error: "Valor total inválido para checkout." },
+        { error: "O valor total deve ser de pelo menos R$1,00." },
         { status: 400 }
       );
     }
 
-    // ✅ Build checkout URL
-    const checkoutResponse = await fetch(`https://api.infinitepay.io/api/v2/checkout`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Handle": handle,
-      },
-      body: JSON.stringify({
-        amount: totalAmount,
-        currency: "BRL",
-        items: products,
-        success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/success`,
-        cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/cancel`,
-      }),
-    });
+    // 🔹 Build InfinitePay web checkout link
+    const baseUrl = "https://checkout.infinitepay.io";
+    const handle = process.env.INFINITEPAY_HANDLE; // your store handle
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://mostf.vercel.app";
 
-    // 🧾 Log and safely parse InfinitePay response
-    const rawText = await checkoutResponse.text();
-    console.log("🔍 InfinitePay raw response:", rawText.slice(0, 500)); // limit log length
+    const itemsParam = encodeURIComponent(JSON.stringify(formattedItems));
+    const redirectUrl = `${baseUrl}/${handle}?items=${itemsParam}&redirect_url=${encodeURIComponent(`${siteUrl}/success`)}`;
 
-    let data;
-    try {
-      data = JSON.parse(rawText);
-    } catch (e) {
-      console.error("❌ InfinitePay returned non-JSON response:", rawText.slice(0, 300));
-      return NextResponse.json(
-        {
-          error: "InfinitePay response was not valid JSON",
-          details: rawText.slice(0, 200),
-        },
-        { status: 502 }
-      );
-    }
+    console.log("✅ InfinitePay checkout URL generated:", redirectUrl);
 
-    // ✅ Handle API errors cleanly
-    if (!checkoutResponse.ok) {
-      console.error("InfinitePay API error:", data);
-      return NextResponse.json(
-        { error: data.message || "Erro ao criar checkout no InfinitePay." },
-        { status: 400 }
-      );
-    }
-
-
-
-    // ✅ Return payment link to frontend
-    return NextResponse.json({ url: data.url });
-  } catch (error) {
-    console.error("InfinitePay checkout error:", error);
+    // ✅ Return URL to frontend
+    return NextResponse.json({ url: redirectUrl });
+  } catch (err) {
+    console.error("❌ Checkout error:", err);
     return NextResponse.json(
-      { error: "Erro interno no servidor durante o checkout." },
+      { error: "Erro interno ao gerar o link de pagamento.", details: err.message },
       { status: 500 }
     );
   }
