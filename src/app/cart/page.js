@@ -1,18 +1,9 @@
 'use client';
 import { useCart } from '../contexts/CartContext';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 
 export default function CartPage() {
-  const [email, setEmail] = useState('');
-  const [cep, setCep] = useState('');
-  const [ruaAvenida, setRuaAvenida] = useState('');
-  const [numero, setNumero] = useState('');
-  const [complemento, setComplemento] = useState('');
-  const [infoAdicional, setInfoAdicional] = useState('');
-  const [telefone, setTelefone] = useState('');
-  const [nomeSobrenome, setNomeSobrenome] = useState('');
-  const [error, setError] = useState('');
 
   const {
     cart,
@@ -25,31 +16,12 @@ export default function CartPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!email || !/\S+@\S+\.\S+/.test(email)) {
-      setError('Por favor, insira um e-mail válido.');
-      return;
-    }
-    if (!cep.trim() || !ruaAvenida.trim() || !numero.trim() || !telefone.trim() || !nomeSobrenome.trim()) {
-      setError('Por favor, preencha todos os campos obrigatórios.');
-      return;
-    }
-
     try {
       const body = {
-        orderId: Date.now().toString(), // unique order id
-        customer: {
-          name: nomeSobrenome,
-          email: email,
-          phone_number: telefone,
-        },
-        address: {
-          cep: cep,
-          number: numero,
-          complement: complemento,
-        },
+        orderId: Date.now().toString(), // unique order ID
         items: cart.map(item => ({
-          description: item.name || item.title,
-          price: Math.round(Number(item.price) * 100), // convert to centavos
+          description: item.name || item.title || "Produto sem nome",
+          price: Math.round(Number(item.price) * 100), // convert R$ → centavos
           quantity: item.quantity || 1,
         })),
       };
@@ -66,11 +38,12 @@ export default function CartPage() {
         // ✅ Redirect user to InfinitePay checkout page
         window.location.href = data.url;
       } else {
+        console.error("InfinitePay response:", data);
         setError("Erro ao criar o link de pagamento.");
       }
     } catch (err) {
-      console.error(err);
-      setError('Algo deu errado. Por favor, tente novamente mais tarde.');
+      console.error("Erro no checkout:", err);
+      setError("Algo deu errado. Por favor, tente novamente mais tarde.");
     }
   };
 
@@ -132,30 +105,20 @@ export default function CartPage() {
                 </button>
               </div>
 
-              {/* FORM: Agora o único botão "Continuar" faz todo o fluxo */}
-              <form 
-                onSubmit={handleSubmit} 
-                className="bg-white shadow-md rounded-xl sm:rounded-2xl p-6 sm:p-8 w-full max-w-sm sm:max-w-md space-y-4 mt-6"
+              <button
+                onClick={async () => {
+                  const res = await fetch("/api/checkout", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ items: cart }),
+                  });
+                  const data = await res.json();
+                  if (data.url) window.location.href = data.url;
+                }}
+                className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
               >
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-800 text-center">
-                  Adicione seus dados e continue para pagamento
-                </h1>
-
-                <input type="email" placeholder="seuemail@porexemplo.com" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-3 sm:px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 text-black focus:ring-blue-500" />
-                <input type="text" placeholder="Cep" value={cep} onChange={(e) => setCep(e.target.value)} className="w-full px-3 sm:px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 text-black focus:ring-blue-500" />
-                <input type="text" placeholder="Rua / Avenida" value={ruaAvenida} onChange={(e) => setRuaAvenida(e.target.value)} className="w-full px-3 sm:px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 text-black focus:ring-blue-500" />
-                <input type="text" placeholder="Número" value={numero} onChange={(e) => setNumero(e.target.value)} className="w-full px-3 sm:px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 text-black focus:ring-blue-500" />
-                <input type="text" placeholder="Complemento" value={complemento} onChange={(e) => setComplemento(e.target.value)} className="w-full px-3 sm:px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 text-black focus:ring-blue-500" />
-                <input type="text" placeholder="Informações adicionais" value={infoAdicional} onChange={(e) => setInfoAdicional(e.target.value)} className="w-full px-3 sm:px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 text-black focus:ring-blue-500" />
-                <input type="tel" placeholder="Telefone (+99)123456789" value={telefone} onChange={(e) => setTelefone(e.target.value)} className="w-full px-3 sm:px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 text-black focus:ring-blue-500" />
-                <input type="text" placeholder="Nome e sobrenome" value={nomeSobrenome} onChange={(e) => setNomeSobrenome(e.target.value)} className="w-full px-3 sm:px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 text-black focus:ring-blue-500" />
-
-                {error && <p className="text-red-500 text-xs sm:text-sm">{error}</p>}
-
-                <button type="submit" className="w-full bg-[#082402ea] text-white font-semibold py-2 rounded-lg hover:bg-indigo-500 transition">
-                  Continuar
-                </button>
-              </form>
+                Continuar para pagamento
+              </button>
             </div>
           </>
         )}
