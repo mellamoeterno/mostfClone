@@ -9,6 +9,11 @@ export default function CartPage() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  const formatBRL = (valueInCents) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+      Number(valueInCents) / 100
+    );
+
   const handleCheckout = async () => {
     if (cart.length === 0) {
       setError("Seu carrinho está vazio.");
@@ -22,7 +27,7 @@ export default function CartPage() {
       // 🧾 Format items for InfinitePay checkout
       const items = cart.map(item => ({
         description: item.name || item.title || "Produto sem nome",
-        price: Math.round(Number(item.price) * 100), // R$ → centavos
+        price: item.price, // ✅ already in centavos, no conversion needed
         quantity: item.quantity || 1,
       }));
 
@@ -71,10 +76,13 @@ export default function CartPage() {
           <>
             <div className="divide-y divide-gray-200 mb-8">
               {cart.map(item => (
-                <div key={item.id} className="py-4 flex flex-col sm:flex-row justify-between gap-4">
+                <div
+                  key={item.id}
+                  className="py-4 flex flex-col sm:flex-row justify-between gap-4"
+                >
                   <div className="flex-1">
                     <h3 className="font-medium text-lg">{item.name}</h3>
-                    <p className="text-gray-600">R$ {Number(item.price).toFixed(2)}</p>
+                    <p className="text-gray-600">{formatBRL(item.price)}</p>
                   </div>
 
                   <button
@@ -92,7 +100,7 @@ export default function CartPage() {
               <div className="flex justify-between items-center mb-6">
                 <span className="font-bold text-lg">Total:</span>
                 <span className="font-bold text-xl">
-                  R$ {Number(cartTotal).toFixed(2)}
+                  {formatBRL(cartTotal)}
                 </span>
               </div>
 

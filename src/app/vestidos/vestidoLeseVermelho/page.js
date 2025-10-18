@@ -3,17 +3,17 @@
 import Link from "next/link";
 import { useState } from 'react';
 import { useCart } from "@/app/contexts/CartContext";
-import MiniCart from "@/app/components/miniCart"; 
+import MiniCart from "@/app/components/miniCart";
 
-// Produtos relacionados NOT PRODUCT FROM THE PAGE, BUT FOR THE BOTTOM 'RELATED PRODUCTS' (inline)
+// 🛍️ Produtos relacionados (links internos, não InfinitePay)
 const conjuntos = [
   {
     id: "emily-0002",
-    href: "https://checkout.infinitepay.io/sotfstudio?items=[{\"name\":\"lese+vermelho+P\",\"price\":18900,\"quantity\":1}]&redirect_url=https://mostf.vercel.app/",
+    href: "/conjuntos/emilyEmParis",
     src: "/images/roupas/emilyEmParis(emBreve).png",
     title: "Emily Em Paris",
     desc: "(Em Breve)",
-    price: 1,
+    price: 199,
   },
 ];
 
@@ -21,25 +21,6 @@ export default function ProductPage() {
   const [selectedSize, setSelectedSize] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const { addToCart } = useCart();
-
-  const renderProductCard = (item, index) => (
-    <div
-      key={index}
-      className="flex flex-col items-center bg-white p-4 shadow hover:shadow-md transition rounded"
-    >
-      <Link href={item.href} className="w-full">
-        <img
-          src={item.src}
-          alt={item.title}
-          className="w-full h-72 object-cover mb-4 rounded"
-        />
-        <h2 className="text-lg font-semibold">{item.title}</h2>
-        <p className="text-sm text-gray-600">{item.desc}</p>
-        <p className="text-base font-bold mt-2">R$ {item.price}</p>
-      </Link>
-      
-    </div>
-  );
 
   const images = [
     "https://res.cloudinary.com/dyiyheyzq/image/upload/v1759135599/leseV_1_syumax.png",
@@ -57,23 +38,40 @@ export default function ProductPage() {
     }
 
     addToCart({
-      id: `jaqueta-${selectedSize}`,
-      name: `Jaqueta couro pu - Tamanho ${selectedSize}`,
-      price: 1,
+      id: `lese-vermelho-${selectedSize}`,
+      name: `Vestido Lese Vermelho - Tamanho ${selectedSize}`,
+      price: 18900, // preço em centavos (R$189,00)
       size: selectedSize,
       quantity: 1,
       image: images[0],
     });
   };
 
+  const renderProductCard = (item, index) => (
+    <div
+      key={index}
+      className="flex flex-col items-center bg-white p-4 shadow hover:shadow-md transition rounded"
+    >
+      <Link href={item.href} className="w-full">
+        <img
+          src={item.src}
+          alt={item.title}
+          className="w-full h-72 object-cover mb-4 rounded"
+        />
+        <h2 className="text-lg font-semibold">{item.title}</h2>
+        <p className="text-sm text-gray-600">{item.desc}</p>
+        <p className="text-base font-bold mt-2">R$ {item.price}</p>
+      </Link>
+    </div>
+  );
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-r from-[#f1f8fff6] via-[#deeefff6] to-[#d7ebfff8] font-sans p-8 gap-10">
       <>
         <MiniCart />
 
-        {/* Product Page */}
         <main className="flex flex-col md:flex-row gap-8 p-6 max-w-5xl mx-auto">
-          {/* Imagens */}
+          {/* Imagem */}
           <div className="w-full md:w-1/2 relative">
             <img
               src={images[currentIndex]}
@@ -97,8 +95,8 @@ export default function ProductPage() {
           {/* Infos */}
           <div className="w-full md:w-1/2 flex flex-col justify-between">
             <div>
-              <h1 className="text-3xl font-bold mb-4 text-[#133010]">Jaqueta couro pu</h1>
-              <p className="text-gray-700 mb-6">R$ 1,00 TESTE</p>
+              <h1 className="text-3xl font-bold mb-4 text-[#133010]">Vestido Lese Vermelho</h1>
+              <p className="text-gray-700 mb-6">R$ 189,00</p>
 
               <div className="mb-6">
                 <h2 className="text-[#133010] text-lg font-semibold mb-2">Tamanho</h2>
@@ -129,7 +127,7 @@ export default function ProductPage() {
           </div>
         </main>
 
-        {/* Related Products */}
+        {/* Produtos Relacionados */}
         <section className="max-w-6xl mx-auto mt-12 w-full">
           <h2 className="text-2xl font-bold mb-6 text-[#133010]">Produtos Relacionados</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
@@ -140,3 +138,6 @@ export default function ProductPage() {
     </div>
   );
 }
+//one problem im gettin now tho, when adding the product to cart it shows the wrong price ($18900.00) now
+//probably for having it as cents in the data and showing the actual price 189, you gotta change something in the code.
+//or it could be inside my cart as well, which should be better for you to do?

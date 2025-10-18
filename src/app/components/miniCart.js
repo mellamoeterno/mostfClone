@@ -2,7 +2,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useCart } from '@/app/contexts/CartContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -10,6 +9,11 @@ export default function MiniCart() {
   const { cart } = useCart();
   const [isOpen, setIsOpen] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
+
+  const formatBRL = (valueInCents) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+      Number(valueInCents) / 100
+    );
 
   useEffect(() => {
     if (cart.length > 0) {
@@ -52,12 +56,16 @@ export default function MiniCart() {
             <h4 className="font-semibold text-lg">Últimos Adicionados</h4>
             {lastItems.map((item, index) => (
               <div key={index} className="flex items-center space-x-3">
-                <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded" />
+                {item.image && (
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    className="w-12 h-12 object-cover rounded"
+                  />
+                )}
                 <div>
                   <p className="text-sm font-medium">{item.name}</p>
-                  <p className="text-xs text-gray-500">
-                    R$ {parseFloat(item.price).toFixed(2)}
-                  </p>
+                  <p className="text-xs text-gray-500">{formatBRL(item.price)}</p>
                 </div>
               </div>
             ))}
