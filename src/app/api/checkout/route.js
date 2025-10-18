@@ -46,14 +46,30 @@ export async function POST(req) {
         amount: totalAmount,
         currency: "BRL",
         items: products,
-        // Optionally add redirect URLs
         success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/success`,
         cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/cancel`,
       }),
     });
 
-    const data = await checkoutResponse.json();
+    // 🧾 Log and safely parse InfinitePay response
+    const rawText = await checkoutResponse.text();
+    console.log("🔍 InfinitePay raw response:", rawText.slice(0, 500)); // limit log length
 
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch (e) {
+      console.error("❌ InfinitePay returned non-JSON response:", rawText.slice(0, 300));
+      return NextResponse.json(
+        {
+          error: "InfinitePay response was not valid JSON",
+          details: rawText.slice(0, 200),
+        },
+        { status: 502 }
+      );
+    }
+
+    // ✅ Handle API errors cleanly
     if (!checkoutResponse.ok) {
       console.error("InfinitePay API error:", data);
       return NextResponse.json(
@@ -61,6 +77,8 @@ export async function POST(req) {
         { status: 400 }
       );
     }
+
+
 
     // ✅ Return payment link to frontend
     return NextResponse.json({ url: data.url });
