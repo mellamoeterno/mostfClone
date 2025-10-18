@@ -1,9 +1,9 @@
-// app/api/webhook/route.js
+// ✅ InfinitePay Webhook → Firestore
 import { NextResponse } from "next/server";
 import { initializeApp, getApps } from "firebase/app";
 import { getFirestore, doc, setDoc } from "firebase/firestore";
 
-// ✅ Init Firebase only once
+// --- ✅ Firebase initialization (only once) ---
 const firebaseConfig = {
   apiKey: process.env.FIREBASE_API_KEY,
   authDomain: process.env.FIREBASE_AUTH_DOMAIN,
@@ -13,38 +13,27 @@ const firebaseConfig = {
   appId: process.env.FIREBASE_APP_ID,
 };
 
-if (!getApps().length) {
-  initializeApp(firebaseConfig);
-}
+if (!getApps().length) initializeApp(firebaseConfig);
 const db = getFirestore();
 
+// --- ✅ Webhook endpoint ---
 export async function POST(req) {
   try {
+    // 🧠 InfinitePay sends JSON (no signature)
     const body = await req.json();
 
-    // Example payload InfinitePay sends:
-    // {
-    //   "invoice_slug": "abc123",
-    //   "amount": 1000,
-    //   "paid_amount": 1010,
-    //   "installments": 1,
-    //   "capture_method": "credit_card",
-    //   "transaction_nsu": "UUID",
-    //   "order_nsu": "UUID-do-pedido",
-    //   "receipt_url": "https://comprovante.com/123",
-    //   "items": [...]
-    // }
-
-    if (!body.order_nsu) {
+    // 🔍 Basic validation
+    if (!body || !body.order_nsu) {
       return NextResponse.json(
-        { success: false, message: "Missing order_nsu" },
+        { success: false, message: "Missing order_nsu in payload" },
         { status: 400 }
       );
     }
 
-    // ✅ Save/update order in Firestore
+    // 🕒 Firestore document reference
     const orderRef = doc(db, "orders", body.order_nsu);
 
+    // 🧾 Store/update payment record
     await setDoc(orderRef, {
       invoice_slug: body.invoice_slug || null,
       amount: body.amount || 0,
@@ -54,16 +43,23 @@ export async function POST(req) {
       transaction_nsu: body.transaction_nsu || null,
       receipt_url: body.receipt_url || null,
       items: body.items || [],
+      status: body.status || "unknown", // InfinitePay may send "paid", "refused", etc.
       updatedAt: new Date().toISOString(),
     });
 
-    // Respond fast so InfinitePay knows it worked
-    return NextResponse.json({ success: true, message: null }, { status: 200 });
+    // ⚡ Respond quickly (InfinitePay expects 200 OK)
+    return new Response(
+      JSON.stringify({ success: true }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   } catch (err) {
-    console.error("Webhook error:", err);
+    console.error("InfinitePay Webhook error:", err);
     return NextResponse.json(
-      { success: false, message: err.message },
-      { status: 400 }
+      { success: false, message: err.message || "Internal error" },
+      { status: 500 }
     );
   }
 }

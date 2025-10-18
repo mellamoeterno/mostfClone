@@ -1,4 +1,4 @@
-// ✅ InfinitePay - Link Integrado Checkout API
+// ✅ InfinitePay - Link Integrado Checkout API (fixed)
 import { NextResponse } from "next/server";
 import crypto from "crypto"; // needed for order_nsu (UUID)
 
@@ -19,24 +19,26 @@ export async function POST(req) {
     // 🧾 Generate unique order ID
     const order_nsu = crypto.randomUUID();
 
-    // 🛒 Build and safely encode items
+    // 🛒 Build items (price in cents, plain integers)
     const itemsArray = body.items.map((item) => ({
       name: item.description || item.name || "Produto",
-      price: Math.round(Number(item.price)), // should already be in cents
+      price: Math.round(Number(item.price)), // e.g. 18900 = R$189,00
       quantity: item.quantity || 1,
     }));
 
-    const items = encodeURIComponent(JSON.stringify(itemsArray));
+    // ⚠️ DO NOT ENCODE HERE — URLSearchParams will do it automatically
+    const itemsString = JSON.stringify(itemsArray);
 
     // 👤 Optional customer data
     const customer = body.customer || {};
+
+    // ✅ Build query params — URLSearchParams handles encoding once
     const queryParams = new URLSearchParams({
-      items,
+      items: itemsString,
       order_nsu,
       redirect_url,
     });
 
-    // Add customer data only if present
     if (customer.name) queryParams.append("customer_name", customer.name);
     if (customer.email) queryParams.append("customer_email", customer.email);
     if (customer.phone) queryParams.append("customer_cellphone", customer.phone);
@@ -47,6 +49,8 @@ export async function POST(req) {
 
     // 🧠 Construct final InfinitePay link
     const checkoutUrl = `https://checkout.infinitepay.io/${handle}?${queryParams.toString()}`;
+
+    console.log("✅ InfinitePay checkout URL:", checkoutUrl);
 
     // ✅ Return link to frontend
     return NextResponse.json({ url: checkoutUrl });
