@@ -31,7 +31,7 @@ export async function POST(req) {
     }
 
     const handle = process.env.INFINITEPAY_HANDLE;
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://mostf.vercel.app";
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://mostf-clone.vercel.app";
     const orderNsu = randomUUID();
 
     const itemsParam = encodeURIComponent(JSON.stringify(formattedItems));

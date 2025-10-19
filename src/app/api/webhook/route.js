@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { initializeApp, getApps } from "firebase/app";
 import { getFirestore, doc, setDoc } from "firebase/firestore";
-
+//this webhook is for listening to sells  data from infinitepay
 // --- ✅ Firebase initialization (only once) ---
 const firebaseConfig = {
   apiKey: process.env.FIREBASE_API_KEY,
