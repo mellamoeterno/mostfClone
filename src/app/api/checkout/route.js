@@ -37,7 +37,9 @@ export async function POST(req) {
     // ✅ FIXED: Don't fully encode the items JSON
     const itemsParam = JSON.stringify(formattedItems).replace(/ /g, "+");
 
-    let checkoutUrl = `https://checkout.infinitepay.io/${handle}?items=${itemsParam}&order_nsu=${orderNsu}&redirect_url=${encodeURIComponent(`${siteUrl}/obrigadoPelaCompra`)}`;
+    let checkoutUrl = `https://checkout.infinitepay.io/sotfstudio?items=[{"name":"lese+vermelho+G","price":100,"quantity":1}]&redirect_url=https://mostf-clone.vercel.app/obrigadoPelaCompra`;
+
+    //https://checkout.infinitepay.io/sotfstudio?items=[{"name":"lese+vermelho+G","price":100,"quantity":1}]&redirect_url=https://mostf-clone.vercel.app/
 
     // Optional: add customer info if available
     if (customer) {
