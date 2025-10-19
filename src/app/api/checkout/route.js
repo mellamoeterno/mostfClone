@@ -1,17 +1,21 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 
 export async function POST(req) {
   try {
-    const { items } = await req.json();
+    const { items, customer } = await req.json();
 
     if (!items || !Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({ error: "Nenhum item no pedido." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Nenhum item no pedido." },
+        { status: 400 }
+      );
     }
 
     const formattedItems = items.map(item => ({
       name: item.name || "Produto sem nome",
+      price: Math.round(Number(item.price)), // centavos
       quantity: item.quantity || 1,
-      price: Math.round(Number(item.price)), // in centavos
     }));
 
     const totalAmount = formattedItems.reduce(
@@ -28,49 +32,34 @@ export async function POST(req) {
 
     const handle = process.env.INFINITEPAY_HANDLE;
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://mostf.vercel.app";
+    const orderNsu = randomUUID();
 
-    const checkoutResponse = await fetch("https://api.infinitepay.io/v2/checkout", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Handle": handle,
-      },
-      body: JSON.stringify({
-        amount: totalAmount,
-        currency: "BRL",
-        items: formattedItems,
-        redirect_url: `${siteUrl}/success`,
-      }),
-    });
+    const itemsParam = encodeURIComponent(JSON.stringify(formattedItems));
+    let checkoutUrl = `https://checkout.infinitepay.io/${handle}?items=${itemsParam}&order_nsu=${orderNsu}&redirect_url=${encodeURIComponent(`${siteUrl}/success`)}`;
 
-    const text = await checkoutResponse.text();
-    console.log("🔍 InfinitePay raw response:", text);
-
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      console.error("❌ InfinitePay returned non-JSON response:", text);
-      return NextResponse.json(
-        { error: "Resposta inválida da API InfinitePay." },
-        { status: 502 }
-      );
+    // Optional: add customer info if available
+    if (customer) {
+      if (customer.name)
+        checkoutUrl += `&customer_name=${encodeURIComponent(customer.name)}`;
+      if (customer.email)
+        checkoutUrl += `&customer_email=${encodeURIComponent(customer.email)}`;
+      if (customer.cellphone)
+        checkoutUrl += `&customer_cellphone=${encodeURIComponent(customer.cellphone)}`;
+      if (customer.address_cep)
+        checkoutUrl += `&address_cep=${encodeURIComponent(customer.address_cep)}`;
+      if (customer.address_number)
+        checkoutUrl += `&address_number=${encodeURIComponent(customer.address_number)}`;
+      if (customer.address_complement)
+        checkoutUrl += `&address_complement=${encodeURIComponent(customer.address_complement)}`;
     }
 
-    if (!checkoutResponse.ok) {
-      console.error("❌ InfinitePay API error:", data);
-      return NextResponse.json(
-        { error: data.message || "Erro ao criar checkout." },
-        { status: checkoutResponse.status }
-      );
-    }
+    console.log("✅ InfinitePay checkout URL generated:", checkoutUrl);
 
-    console.log("✅ InfinitePay checkout URL:", data.url);
-    return NextResponse.json({ url: data.url });
+    return NextResponse.json({ url: checkoutUrl });
   } catch (err) {
-    console.error("❌ Erro interno:", err);
+    console.error("❌ Checkout error:", err);
     return NextResponse.json(
-      { error: "Erro interno ao gerar checkout.", details: err.message },
+      { error: "Erro interno ao gerar o link de pagamento.", details: err.message },
       { status: 500 }
     );
   }
