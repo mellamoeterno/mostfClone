@@ -2,51 +2,75 @@ import { NextResponse } from "next/server";
 
 export async function POST(req) {
   try {
-    const body = await req.json();
+    const { items } = await req.json();
 
-    if (!body.items || !Array.isArray(body.items) || body.items.length === 0) {
-      return NextResponse.json(
-        { error: "Nenhum item no pedido." },
-        { status: 400 }
-      );
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return NextResponse.json({ error: "Nenhum item no pedido." }, { status: 400 });
     }
 
-    // 🔹 Format items correctly for InfinitePay checkout
-    const formattedItems = body.items.map(item => ({
-      name: item.description || item.name || "Produto sem nome",
-      price: Math.round(Number(item.price)), // Ensure in centavos (e.g. 18900)
+    const formattedItems = items.map(item => ({
+      name: item.name || "Produto sem nome",
       quantity: item.quantity || 1,
+      price: Math.round(Number(item.price)), // in centavos
     }));
 
-    // 🔹 Basic total validation (optional)
     const totalAmount = formattedItems.reduce(
       (sum, item) => sum + item.price * item.quantity,
       0
     );
+
     if (isNaN(totalAmount) || totalAmount < 100) {
-      // InfinitePay minimum is R$1.00 (100 centavos)
       return NextResponse.json(
         { error: "O valor total deve ser de pelo menos R$1,00." },
         { status: 400 }
       );
     }
 
-    // 🔹 Build InfinitePay web checkout link
-    const baseUrl = "https://checkout.infinitepay.io";
-    const handle = process.env.INFINITEPAY_HANDLE; // your store handle
+    const handle = process.env.INFINITEPAY_HANDLE;
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://mostf.vercel.app";
 
-    const itemsParam = encodeURIComponent(JSON.stringify(formattedItems));
-    const redirectUrl = `${baseUrl}/${handle}?items=${itemsParam}&redirect_url=${encodeURIComponent(`${siteUrl}/success`)}`;
+    const checkoutResponse = await fetch("https://api.infinitepay.io/v2/checkout", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Handle": handle,
+      },
+      body: JSON.stringify({
+        amount: totalAmount,
+        currency: "BRL",
+        items: formattedItems,
+        redirect_url: `${siteUrl}/success`,
+      }),
+    });
 
-    console.log("✅ InfinitePay checkout URL generated:", redirectUrl);
+    const text = await checkoutResponse.text();
+    console.log("🔍 InfinitePay raw response:", text);
 
-    // ✅ Return URL to frontend
-    return NextResponse.json({ url: redirectUrl });
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      console.error("❌ InfinitePay returned non-JSON response:", text);
+      return NextResponse.json(
+        { error: "Resposta inválida da API InfinitePay." },
+        { status: 502 }
+      );
+    }
+
+    if (!checkoutResponse.ok) {
+      console.error("❌ InfinitePay API error:", data);
+      return NextResponse.json(
+        { error: data.message || "Erro ao criar checkout." },
+        { status: checkoutResponse.status }
+      );
+    }
+
+    console.log("✅ InfinitePay checkout URL:", data.url);
+    return NextResponse.json({ url: data.url });
   } catch (err) {
-    console.error("❌ Checkout error:", err);
+    console.error("❌ Erro interno:", err);
     return NextResponse.json(
-      { error: "Erro interno ao gerar o link de pagamento.", details: err.message },
+      { error: "Erro interno ao gerar checkout.", details: err.message },
       { status: 500 }
     );
   }
