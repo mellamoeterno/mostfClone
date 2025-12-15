@@ -13,7 +13,7 @@
     "@stripe/stripe-js": "^7.5.0",
     "firebase": "^12.3.0",
     "framer-motion": "^12.18.1",
-    "next": "15.3.3",
+    "next": "15.3.8",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
